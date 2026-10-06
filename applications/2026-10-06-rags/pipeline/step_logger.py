@@ -50,18 +50,24 @@ class StepLogger(AsyncCallbackHandler):
         logger.debug("[%s] llm_start", self.source.value)
 
     async def on_llm_end(self, response: Any, *, run_id: UUID, **kwargs: Any) -> None:
-        """LLM 呼び出し終了時にトークン使用量を集計する。"""
-        try:
-            usage = response.llm_output.get("token_usage", {}) if response.llm_output else {}
-            self.total_input_tokens  += usage.get("prompt_tokens", 0)
-            self.total_output_tokens += usage.get("completion_tokens", 0)
-        except Exception:
-            pass
-        logger.debug("[%s] llm_end in=%d out=%d",
-                     self.source.value, self.total_input_tokens, self.total_output_tokens)
+        """LLM 呼び出し終了時。トークン集計は add_tokens() で行うためここでは何もしない。"""
+        logger.debug("[%s] llm_end", self.source.value)
 
     async def on_llm_error(self, error: BaseException, *, run_id: UUID, **kwargs: Any) -> None:
         self._put(StepLog(source=self.source, step=StepType.ERROR, data={"error": str(error)}))
 
     def emit_step(self, step: StepType, data: dict[str, Any], attempt: int = 1) -> None:
         self._put(StepLog(source=self.source, step=step, attempt=attempt, data=data))
+
+    def add_tokens(self, input_tokens: int, output_tokens: int) -> None:
+        """LLM 呼び出し後にトークン数を外部から加算する。
+
+        Callback 経由ではなく、ainvoke の戻り値の usage_metadata から
+        呼び出し元が直接このメソッドで加算する。
+
+        Args:
+            input_tokens: 入力トークン数。
+            output_tokens: 出力トークン数。
+        """
+        self.total_input_tokens  += input_tokens
+        self.total_output_tokens += output_tokens

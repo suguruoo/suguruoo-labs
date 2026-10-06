@@ -97,6 +97,13 @@ class Evaluator:
             "docs_text": docs_text,
         })
 
+        # usage_metadata から直接トークン数を取得して step_logger に加算
+        usage = getattr(response, "usage_metadata", None) or {}
+        step_logger.add_tokens(
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
+
         raw = response.content.strip()
         try:
             clean = raw.replace("```json", "").replace("```", "").strip()

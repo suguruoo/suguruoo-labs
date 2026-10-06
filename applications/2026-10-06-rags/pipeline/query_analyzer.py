@@ -157,6 +157,13 @@ class QueryAnalyzer:
         response = await chain.ainvoke(invoke_input)
         raw_text = response.content.strip()
 
+        # usage_metadata から直接トークン数を取得して step_logger に加算
+        usage = getattr(response, "usage_metadata", None) or {}
+        step_logger.add_tokens(
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
+
         try:
             # コードブロックを除去してパース
             clean = raw_text.replace("```json", "").replace("```", "").strip()

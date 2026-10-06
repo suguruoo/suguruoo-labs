@@ -106,6 +106,13 @@ class Generator:
 
         answer = response.content.strip()
 
+        # usage_metadata から直接トークン数を取得して step_logger に加算
+        usage = getattr(response, "usage_metadata", None) or {}
+        step_logger.add_tokens(
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
+
         step_logger.emit_step(
             step=StepType.GENERATE,
             data={
