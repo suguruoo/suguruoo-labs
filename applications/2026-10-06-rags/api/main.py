@@ -65,6 +65,8 @@ def _save_result(result_id: str, params: PipelineParams, results: dict) -> None:
                 "evaluate_sec": r.evaluate_sec,
                 "generate_sec": r.generate_sec,
                 "hit_count": r.hit_count,
+                "total_input_tokens": r.total_input_tokens,
+                "total_output_tokens": r.total_output_tokens,
                 "top_docs": [d.model_dump() for d in r.top_docs],
             }
             for src, r in results.items() if isinstance(r, PipelineResult)
@@ -99,6 +101,8 @@ async def _pipeline_stream(params: PipelineParams, result_id: str):
                             "evaluate_sec": r.evaluate_sec,
                             "generate_sec": r.generate_sec,
                             "hit_count": r.hit_count,
+                            "total_input_tokens": r.total_input_tokens,
+                            "total_output_tokens": r.total_output_tokens,
                         }
                 yield _format_sse(SSEEvent(event_type="result", source="all", data=results_data))
 

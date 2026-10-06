@@ -38,14 +38,25 @@ def _rank_badge(rank: int) -> str:
     return _RANK_MEDALS.get(rank, "😢")
 
 
-def _render_summary_card(src: str, result: dict, timing_ranks: dict, hit_ranks: dict) -> None:
+def _render_summary_card(
+    src: str,
+    result: dict,
+    timing_ranks: dict,
+    hit_ranks: dict,
+    in_token_ranks: dict,
+    out_token_ranks: dict,
+) -> None:
     """1ソースのサマリーカードを描画する。"""
     cfg = _SOURCE_CONFIG.get(src, {"label": src, "color": "#333"})
-    retry = result.get("retry_count", 0)
+    retry    = result.get("retry_count", 0)
     total_sec = result.get("total_sec", 0.0)
     hit_count = result.get("hit_count", 0)
-    tr = timing_ranks.get(src, 0)
-    hr = hit_ranks.get(src, 0)
+    in_tok   = result.get("total_input_tokens", 0)
+    out_tok  = result.get("total_output_tokens", 0)
+    tr  = timing_ranks.get(src, 0)
+    hr  = hit_ranks.get(src, 0)
+    ir  = in_token_ranks.get(src, 0)
+    orr = out_token_ranks.get(src, 0)
     retry_txt = f"（再検索 {retry} 回）" if retry > 0 else ""
 
     st.markdown(f"""
@@ -55,10 +66,12 @@ def _render_summary_card(src: str, result: dict, timing_ranks: dict, hit_ranks: 
     {cfg['label']}
   </div>
   <div style="font-size:0.82rem;margin-top:4px;">✅ 完了{retry_txt}</div>
-  <div style="display:flex;gap:16px;margin-top:8px;font-size:0.82rem;">
+  <div style="display:flex;gap:12px;margin-top:8px;font-size:0.82rem;flex-wrap:wrap;">
     <div><b>⏱ TotalTime</b><br>{total_sec:.2f}s &nbsp;{_rank_badge(tr)}</div>
     <div><b>📄 Hit Docs</b><br>{hit_count} 件 &nbsp;{_rank_badge(hr)}</div>
     <div><b>🔄 Retry</b><br>{retry} 回</div>
+    <div><b>📥 Input Tokens</b><br>{in_tok:,} &nbsp;{_rank_badge(ir)}</div>
+    <div><b>📤 Output Tokens</b><br>{out_tok:,} &nbsp;{_rank_badge(orr)}</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -104,36 +117,32 @@ def _render_detail_page(data: dict) -> None:
 
     sources = [s for s in ["postgres", "mysql", "qdrant", "web"] if s in results]
 
-    # ── ランキング計算 ──
-    total_secs   = [results[s].get("total_sec",  9999.0) for s in sources]
-    hit_counts   = [results[s].get("hit_count",  0)      for s in sources]
-    time_ranks_l = _dense_rank(total_secs, lower_is_better=True)
-    hit_ranks_l  = _dense_rank(hit_counts, lower_is_better=False)
-    timing_ranks = {s: time_ranks_l[i] for i, s in enumerate(sources)}
-    hit_ranks    = {s: hit_ranks_l[i]  for i, s in enumerate(sources)}
+    # ── ランキング計算（Dense rank, lower_is_better でトークンも少ない方が上位）──
+    total_secs   = [results[s].get("total_sec",           9999.0) for s in sources]
+    hit_counts   = [results[s].get("hit_count",           0)      for s in sources]
+    in_tokens    = [results[s].get("total_input_tokens",  999999) for s in sources]
+    out_tokens   = [results[s].get("total_output_tokens", 999999) for s in sources]
+
+    time_ranks_l    = _dense_rank(total_secs,  lower_is_better=True)
+    hit_ranks_l     = _dense_rank(hit_counts,  lower_is_better=False)
+    in_token_ranks_l  = _dense_rank(in_tokens,  lower_is_better=True)
+    out_token_ranks_l = _dense_rank(out_tokens, lower_is_better=True)
+
+    timing_ranks    = {s: time_ranks_l[i]      for i, s in enumerate(sources)}
+    hit_ranks       = {s: hit_ranks_l[i]       for i, s in enumerate(sources)}
+    in_token_ranks  = {s: in_token_ranks_l[i]  for i, s in enumerate(sources)}
+    out_token_ranks = {s: out_token_ranks_l[i] for i, s in enumerate(sources)}
 
     # ── サマリーカード ──
     st.markdown("### 📊 サマリー比較")
     card_cols = st.columns(len(sources))
     for col, src in zip(card_cols, sources):
         with col:
-            _render_summary_card(src, results[src], timing_ranks, hit_ranks)
-
-    # ── ランキング表 ──
-    st.markdown("### 🏆 ランキング")
-    rc1, rc2 = st.columns(2)
-    with rc1:
-        st.markdown("**⏱ TotalTime（速い順）**")
-        for s in sorted(sources, key=lambda x: results[x].get("total_sec", 9999)):
-            st.markdown(f"{_rank_badge(timing_ranks[s])} "
-                        f"**{_SOURCE_CONFIG.get(s,{'label':s})['label']}** "
-                        f"— `{results[s].get('total_sec',0):.2f}s`")
-    with rc2:
-        st.markdown("**📄 Hit Docs（多い順）**")
-        for s in sorted(sources, key=lambda x: results[x].get("hit_count", 0), reverse=True):
-            st.markdown(f"{_rank_badge(hit_ranks[s])} "
-                        f"**{_SOURCE_CONFIG.get(s,{'label':s})['label']}** "
-                        f"— `{results[s].get('hit_count',0)} 件`")
+            _render_summary_card(
+                src, results[src],
+                timing_ranks, hit_ranks,
+                in_token_ranks, out_token_ranks,
+            )
 
     st.divider()
 

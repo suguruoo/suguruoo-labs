@@ -169,6 +169,8 @@ async def _run_single_pipeline(
         evaluate_sec=round(t_evaluate, 2),
         generate_sec=round(t_generate, 2),
         hit_count=len(top_docs),
+        total_input_tokens=step_logger.total_input_tokens,
+        total_output_tokens=step_logger.total_output_tokens,
     )
 
 

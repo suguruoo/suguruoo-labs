@@ -75,9 +75,11 @@ class PipelineResult(BaseModel):
     retry_count: int = 0
     steps: list[StepLog] = Field(default_factory=list)
     # タイミング情報
-    total_sec: float = 0.0          # パイプライン全体の所要時間
-    query_analyze_sec: float = 0.0  # QueryAnalyze ステップの所要時間
-    retrieve_sec: float = 0.0       # Retrieve ステップの所要時間（合計）
-    evaluate_sec: float = 0.0       # Evaluate ステップの所要時間（合計）
-    generate_sec: float = 0.0       # Generate ステップの所要時間
-    hit_count: int = 0              # 取得できた文書数
+    total_sec: float = 0.0
+    query_analyze_sec: float = 0.0
+    retrieve_sec: float = 0.0
+    evaluate_sec: float = 0.0
+    generate_sec: float = 0.0
+    hit_count: int = 0
+    total_input_tokens: int = 0   # 全 LLM 呼び出しの入力トークン合計
+    total_output_tokens: int = 0  # 全 LLM 呼び出しの出力トークン合計
