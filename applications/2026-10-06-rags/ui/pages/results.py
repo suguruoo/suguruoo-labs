@@ -154,7 +154,10 @@ def _render_detail_page(data: dict) -> None:
             tab_ans, tab_time, tab_docs = st.tabs(["💬 最終回答", "⏱ タイミング内訳", "📄 Hit Docs"])
             with tab_ans:
                 ans = r.get("final_answer", "")
-                st.error(ans) if ans.startswith("エラーが発生しました") else st.markdown(ans)
+                if ans.startswith("エラーが発生しました"):
+                    st.error(ans)
+                else:
+                    st.markdown(ans)
             with tab_time:
                 _render_timing_breakdown(r)
             with tab_docs:
