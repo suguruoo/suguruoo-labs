@@ -39,11 +39,14 @@ class MySQLRetriever:
             password=self._settings["password"],
             database=self._settings["database"],
             charset="utf8mb4",
+            use_unicode=True,
             cursorclass=pymysql.cursors.DictCursor,
         )
+        conn.autocommit(True)
         with conn.cursor() as cur:
             cur.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
-        conn.commit()
+            cur.execute("SET CHARACTER SET utf8mb4")
+        conn.autocommit(False)
         return conn
 
     @staticmethod

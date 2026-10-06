@@ -28,12 +28,16 @@ def _get_connection(settings: dict[str, Any]) -> pymysql.connections.Connection:
         password=settings["password"],
         database=settings["database"],
         charset="utf8mb4",
+        use_unicode=True,
         cursorclass=pymysql.cursors.DictCursor,
     )
     # character_set_client がサーバーデフォルト(latin1)のままになるケースを防ぐ
+    # autocommit=True のセッションで SET NAMES を実行して確実に utf8mb4 に固定する
+    conn.autocommit(True)
     with conn.cursor() as cur:
         cur.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
-    conn.commit()
+        cur.execute("SET CHARACTER SET utf8mb4")
+    conn.autocommit(False)
     return conn
 
 
