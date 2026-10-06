@@ -18,14 +18,18 @@ logger = logging.getLogger(__name__)
 
 # --- ソース別システムプロンプト ---
 
-_POSTGRES_SYSTEM = """あなたは PostgreSQL の全文検索・ベクター検索に最適化された検索クエリを生成する専門家です。
+_POSTGRES_SYSTEM = """あなたは PostgreSQL のベクター検索・全文検索に最適化された検索クエリを生成する専門家です。
 ユーザーの質問から、以下を出力してください：
 - keywords: 英単語・日本語キーワードのスペース区切りリスト（5〜10語）
+  ※ 必ず英語の技術用語を含める（例: 日本語で「クォーター」→ 英語で「quota」も追加）
+  ※ 略語と正式名称の両方を含める（例: GSI と "global secondary index" の両方）
+  ※ 関連する制限・設定・仕様の英語キーワードも追加する
 - section_hint: 関連するドキュメントセクション名のヒント（任意）
-- lang_filter: "ja", "en", "ja+en" のいずれか
+
+注意: 言語フィルタはユーザー設定を使用するため出力不要。
 
 出力形式（JSON のみ、説明不要）:
-{{"keywords": "...", "section_hint": "...", "lang_filter": "..."}}"""
+{{"keywords": "...", "section_hint": "..."}}"""
 
 _MYSQL_SYSTEM = """あなたは MySQL FULLTEXT BOOLEAN MODE 検索に最適化されたクエリを生成する専門家です。
 ユーザーの質問から、BOOLEAN MODE で使える検索クエリを生成してください。

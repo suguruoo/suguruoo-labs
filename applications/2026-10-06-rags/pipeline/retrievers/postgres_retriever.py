@@ -1,8 +1,13 @@
 # pipeline/retrievers/postgres_retriever.py
 """PostgreSQL (pgvector) Retriever。
 
-ローカル embedding（multilingual-e5-large）を使ったコサイン類似度検索。
+ローカル embedding（multilingual-e5-large）+ tsvector によるハイブリッド検索。
+Reciprocal Rank Fusion (RRF) で embedding スコアとキーワードスコアを統合する。
 OpenAI API は使用しない。
+
+方策①: lang_filter はユーザー設定(params.language)を直接使用（LLM 判断させない）
+方策②: 候補数を top_k × 4 に拡大してから最終 top_k に絞る
+方策③: tsvector 全文検索スコアと embedding スコアを RRF で統合
 """
 
 from __future__ import annotations
@@ -19,9 +24,14 @@ from pipeline.step_logger import StepLogger
 
 logger = logging.getLogger(__name__)
 
+# RRF 定数（標準値 60）
+_RRF_K = 60
+# 方策②: 候補プール倍率
+_CANDIDATE_MULTIPLIER = 4
+
 
 class PostgresRetriever:
-    """pgvector cosine similarity + メタデータフィルタによる検索。
+    """pgvector + tsvector RRF ハイブリッド検索。
 
     Attributes:
         source: SourceType.POSTGRES。
@@ -42,14 +52,7 @@ class PostgresRetriever:
         self._embedder = LocalEmbedder()
 
     def _embed_query(self, text: str) -> list[float]:
-        """クエリテキストを embedding に変換する（ローカル）。
-
-        Args:
-            text: 検索クエリテキスト。
-
-        Returns:
-            embedding ベクター。
-        """
+        """クエリテキストを embedding に変換する（ローカル）。"""
         return self._embedder.embed_query(text)
 
     def _get_connection(self) -> psycopg2.extensions.connection:
@@ -70,7 +73,7 @@ class PostgresRetriever:
         step_logger: StepLogger,
         attempt: int = 1,
     ) -> list[RetrievedDoc]:
-        """クエリ辞書を使って PostgreSQL から文書を検索する。
+        """ハイブリッド検索（embedding RRF + tsvector）で文書を取得する。
 
         Args:
             query_dict: QueryAnalyzer が生成したクエリ辞書。
@@ -82,7 +85,10 @@ class PostgresRetriever:
             検索結果の RetrievedDoc リスト。
         """
         keywords = query_dict.get("keywords", params.question)
-        lang_filter = query_dict.get("lang_filter", params.language)
+
+        # ── 方策①: lang_filter は params.language を直接使用（LLM 判断を無視）──
+        lang_filter = params.language
+        candidate_size = params.top_k * _CANDIDATE_MULTIPLIER  # 方策②
 
         embedding = self._embed_query(keywords)
 
@@ -90,13 +96,62 @@ class PostgresRetriever:
         if lang_filter in ("ja", "en"):
             lang_condition = f"AND lang = '{lang_filter}'"
 
+        # tsvector 用: ASCII英数字のみ抽出（日本語カタカナ/漢字を除外してヒット率向上）
+        # 例: "DynamoDB クォーター GSI 制限" → "DynamoDB GSI"
+        ascii_keywords = " ".join(
+            w for w in keywords.split()
+            if all(ord(c) < 128 for c in w) and len(w) > 1
+        )
+        # 英語キーワードが空の場合はフル keywords をそのまま使用
+        tsvector_query = ascii_keywords if ascii_keywords.strip() else keywords
+
+        # ── 方策③: RRF ハイブリッド SQL（URL 単位 dedup 付き）──
+        # embedding ランク + tsvector ランクを RRF で統合
+        # 同一 URL の複数チャンクが embedding を重複加算しないよう
+        # emb_ranked では URL ごとに最高スコア（最小距離）のチャンクのみ採用
         sql = f"""
+            WITH
+            emb_best AS (
+                SELECT DISTINCT ON (url) id, url,
+                    embedding <=> %s::vector AS dist
+                FROM documents
+                WHERE 1=1 {lang_condition}
+                ORDER BY url, embedding <=> %s::vector
+            ),
+            emb_ranked AS (
+                SELECT id,
+                    ROW_NUMBER() OVER (ORDER BY dist) AS rank_emb
+                FROM emb_best
+                LIMIT %s
+            ),
+            kw_ranked AS (
+                SELECT id,
+                    ROW_NUMBER() OVER (
+                        ORDER BY ts_rank_cd(
+                            to_tsvector('simple',
+                                coalesce(title,'') || ' ' || coalesce(content,'')),
+                            plainto_tsquery('simple', %s)
+                        ) DESC
+                    ) AS rank_kw
+                FROM documents
+                WHERE 1=1 {lang_condition}
+                  AND to_tsvector('simple',
+                        coalesce(title,'') || ' ' || coalesce(content,''))
+                      @@ plainto_tsquery('simple', %s)
+                LIMIT %s
+            )
             SELECT
-                url, title, section, lang, content,
-                1 - (embedding <=> %s::vector) AS score
-            FROM documents
-            WHERE 1=1 {lang_condition}
-            ORDER BY embedding <=> %s::vector
+                d.url, d.title, d.section, d.lang, d.content,
+                (
+                    COALESCE(1.0 / ({_RRF_K} + e.rank_emb), 0) +
+                    COALESCE(1.0 / ({_RRF_K} + k.rank_kw), 0)
+                ) AS rrf_score,
+                1 - (d.embedding <=> %s::vector) AS emb_score
+            FROM documents d
+            LEFT JOIN emb_ranked e ON d.id = e.id
+            LEFT JOIN kw_ranked  k ON d.id = k.id
+            WHERE e.id IS NOT NULL OR k.id IS NOT NULL
+            ORDER BY rrf_score DESC
             LIMIT %s;
         """
 
@@ -104,8 +159,10 @@ class PostgresRetriever:
             step=StepType.RETRIEVE_REQUEST,
             data={
                 "query": keywords,
+                "tsvector_query": tsvector_query,
                 "lang_filter": lang_filter,
-                "sql_preview": sql.strip()[:200],
+                "method": "hybrid_rrf (embedding + tsvector)",
+                "candidate_size": candidate_size,
                 "top_k": params.top_k,
             },
             attempt=attempt,
@@ -115,9 +172,18 @@ class PostgresRetriever:
         docs: list[RetrievedDoc] = []
         try:
             with conn.cursor() as cur:
-                cur.execute(sql, (embedding, embedding, params.top_k * 2))
+                cur.execute(sql, (
+                    embedding,       # emb_best: 距離計算 (DISTINCT ON)
+                    embedding,       # emb_best: ORDER BY 距離（dedup用）
+                    candidate_size,  # emb_ranked: LIMIT（方策②）
+                    tsvector_query,  # kw_ranked: plainto_tsquery WHERE
+                    tsvector_query,  # kw_ranked: plainto_tsquery WHERE
+                    candidate_size,  # kw_ranked: LIMIT（方策②）
+                    embedding,       # emb_score 計算用
+                    params.top_k,    # 最終 LIMIT
+                ))
                 rows = cur.fetchall()
-                for rank, row in enumerate(rows[: params.top_k]):
+                for rank, row in enumerate(rows):
                     docs.append(
                         RetrievedDoc(
                             content=row[4],
@@ -125,10 +191,32 @@ class PostgresRetriever:
                             title=row[1] or "",
                             section=row[2] or "",
                             lang=row[3] or "",
-                            score=float(row[5]),
+                            score=float(row[5]),  # rrf_score
                             rank=rank + 1,
                         )
                     )
+
+            # tsvector でヒットがゼロの場合: embedding only fallback
+            if not docs:
+                logger.info("[postgres] RRF 0 hits → fallback to embedding-only")
+                fb_sql = f"""
+                    SELECT url, title, section, lang, content,
+                           1 - (embedding <=> %s::vector) AS score
+                    FROM documents
+                    WHERE 1=1 {lang_condition}
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s;
+                """
+                with conn.cursor() as cur:
+                    cur.execute(fb_sql, (embedding, embedding, params.top_k))
+                    for rank, row in enumerate(cur.fetchall()):
+                        docs.append(
+                            RetrievedDoc(
+                                content=row[4], url=row[0], title=row[1] or "",
+                                section=row[2] or "", lang=row[3] or "",
+                                score=float(row[5]), rank=rank + 1,
+                            )
+                        )
         finally:
             conn.close()
 
@@ -136,12 +224,14 @@ class PostgresRetriever:
             step=StepType.RETRIEVE_RESULT,
             data={
                 "count": len(docs),
+                "method": "hybrid_rrf",
                 "docs": [
-                    {"rank": d.rank, "score": d.score, "title": d.title, "url": d.url}
+                    {"rank": d.rank, "score": round(d.score, 4),
+                     "title": d.title, "url": d.url}
                     for d in docs
                 ],
             },
             attempt=attempt,
         )
-        logger.info("[postgres] retrieve attempt=%d → %d docs", attempt, len(docs))
+        logger.info("[postgres] hybrid retrieve attempt=%d → %d docs", attempt, len(docs))
         return docs
