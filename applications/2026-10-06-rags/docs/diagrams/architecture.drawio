@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" version="21.0.0">
+  <diagram id="arch" name="System Architecture">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" pageWidth="1654" pageHeight="1169">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <!-- User -->
+        <mxCell id="user" value="👤 User" style="ellipse;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="780" y="30" width="80" height="55" as="geometry"/></mxCell>
+        <!-- UI -->
+        <mxCell id="ui" value="🖥️ Streamlit UI (app.py)" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="680" y="150" width="280" height="55" as="geometry"/></mxCell>
+        <mxCell id="spanel" value="⚙️ 設定パネル&#xa;model/top-k/temp" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="420" y="155" width="200" height="45" as="geometry"/></mxCell>
+        <mxCell id="scols" value="4列 StepRenderer&#xa;PG/MySQL/Qdrant/Web" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1000" y="155" width="200" height="45" as="geometry"/></mxCell>
+        <!-- API -->
+        <mxCell id="api" value="⚡ FastAPI  POST /query + SSE" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="680" y="280" width="280" height="55" as="geometry"/></mxCell>
+        <!-- Pipelines label -->
+        <mxCell id="plabel" value="🔗 4本独立パイプライン (asyncio.create_task × 4)" style="text;fontStyle=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1"><mxGeometry x="380" y="390" width="580" height="30" as="geometry"/></mxCell>
+        <!-- P1 -->
+        <mxCell id="p1" value="📦 PostgreSQL Pipeline&#xa;①QA→②pgvector→③Eval→④Rank→⑤Gen" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1"><mxGeometry x="60" y="430" width="300" height="70" as="geometry"/></mxCell>
+        <!-- P2 -->
+        <mxCell id="p2" value="🗂️ MySQL Pipeline&#xa;①QA→②FULLTEXT→③Eval→④Rank→⑤Gen" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="390" y="430" width="300" height="70" as="geometry"/></mxCell>
+        <!-- P3 -->
+        <mxCell id="p3" value="🔷 Qdrant Pipeline&#xa;①QA→②cosine→③Eval→④Rank→⑤Gen" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="720" y="430" width="300" height="70" as="geometry"/></mxCell>
+        <!-- P4 -->
+        <mxCell id="p4" value="🌐 WebFetch Pipeline&#xa;①QA→②web_search→③Eval→④Rank→⑤Gen" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1050" y="430" width="300" height="70" as="geometry"/></mxCell>
+        <!-- Data layer -->
+        <mxCell id="pgdb" value="PostgreSQL 17&#xa;+ pgvector" style="shape=cylinder3;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1"><mxGeometry x="80" y="580" width="100" height="65" as="geometry"/></mxCell>
+        <mxCell id="mydb" value="MySQL 8.0&#xa;FULLTEXT" style="shape=cylinder3;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="420" y="580" width="100" height="65" as="geometry"/></mxCell>
+        <mxCell id="qddb" value="Qdrant&#xa;vectors" style="shape=cylinder3;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="750" y="580" width="100" height="65" as="geometry"/></mxCell>
+        <mxCell id="oai" value="OpenAI API&#xa;web_search" style="shape=cylinder3;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1080" y="580" width="100" height="65" as="geometry"/></mxCell>
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="POST /query" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ui" target="api" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="SSE ←" style="edgeStyle=orthogonalEdgeStyle;dashed=1;" edge="1" source="api" target="ui" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1050" y="307"/><mxPoint x="1050" y="177"/></Array></mxGeometry></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="api" target="p1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="api" target="p2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="api" target="p3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="api" target="p4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p1" target="pgdb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p2" target="mydb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p3" target="qddb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p4" target="oai" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" version="21.0.0">
+  <diagram id="dataflow" name="Data Flow">
+    <mxGraphModel pageWidth="1100" pageHeight="800">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="src" value="AWS Docs (JA+EN)" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="80" width="160" height="44" as="geometry"/></mxCell>
+        <mxCell id="crawl" value="🕷️ Crawler" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="200" width="160" height="44" as="geometry"/></mxCell>
+        <mxCell id="chunk" value="✂️ Chunker (512t/50)" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="320" width="160" height="44" as="geometry"/></mxCell>
+        <mxCell id="embed" value="🔢 Embedder" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="440" width="160" height="44" as="geometry"/></mxCell>
+        <mxCell id="pgdb" value="PostgreSQL+pgvector" style="shape=cylinder3;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1"><mxGeometry x="300" y="430" width="140" height="60" as="geometry"/></mxCell>
+        <mxCell id="mydb" value="MySQL FULLTEXT" style="shape=cylinder3;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="460" y="310" width="140" height="60" as="geometry"/></mxCell>
+        <mxCell id="qddb" value="Qdrant vectors" style="shape=cylinder3;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="620" y="430" width="140" height="60" as="geometry"/></mxCell>
+        <mxCell id="qin" value="❓ Question" style="ellipse;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="840" y="200" width="120" height="50" as="geometry"/></mxCell>
+        <mxCell id="qa" value="QueryAnalyzer ×4" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="820" y="310" width="150" height="44" as="geometry"/></mxCell>
+        <mxCell id="ret" value="Retrievers ×4" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="820" y="420" width="150" height="44" as="geometry"/></mxCell>
+        <mxCell id="gen" value="Generator ×4 (独立session)" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="820" y="540" width="150" height="44" as="geometry"/></mxCell>
+        <mxCell id="out" value="💬 Final Answer ×4" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="820" y="650" width="150" height="44" as="geometry"/></mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="src" target="crawl" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="pages" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="crawl" target="chunk" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="chunks" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="chunk" target="embed" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" value="meta" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="chunk" target="mydb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="embed+doc" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="embed" target="pgdb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" value="vectors" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="embed" target="qddb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="qin" target="qa" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="qa" target="ret" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ret" target="pgdb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ret" target="mydb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ret" target="qddb" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e12" value="Top-K" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ret" target="gen" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="gen" target="out" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
