@@ -29,9 +29,9 @@ from ui.components.step_renderer import _STEP_ICONS, render_step
 _API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 _SOURCE_CONFIG = {
-    "postgres": {"label": "📦 PostgreSQL", "subtitle": "Document DB (pgvector)"},
-    "mysql":    {"label": "🗂️ MySQL",      "subtitle": "RDB Index (FULLTEXT)"},
-    "qdrant":   {"label": "🔷 Qdrant",     "subtitle": "Vector DB (cosine)"},
+    "postgres": {"label": "🟠 PostgreSQL", "subtitle": "Document DB (pgvector)"},
+    "mysql":    {"label": "🟡 MySQL",      "subtitle": "RDB Index (FULLTEXT)"},
+    "qdrant":   {"label": "🟢 Qdrant",     "subtitle": "Vector DB (cosine)"},
     "web":      {"label": "🌐 WebFetch",   "subtitle": "OpenAI web_search"},
 }
 

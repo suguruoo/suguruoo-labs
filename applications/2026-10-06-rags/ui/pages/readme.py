@@ -25,9 +25,9 @@ st.markdown("""
 
 | ソース | 技術 | 検索方式 |
 |---|---|---|
-| 📦 PostgreSQL | pgvector (pg17) | コサイン類似度ベクター検索 |
-| 🗂️ MySQL | FULLTEXT INDEX (8.0) | BM25 相当キーワード検索 |
-| 🔷 Qdrant | qdrant:latest | 純粋コサイン類似度検索 |
+| 🟠 PostgreSQL | pgvector (pg17) | コサイン類似度ベクター検索 |
+| 🟡 MySQL | FULLTEXT INDEX (8.0) | BM25 相当キーワード検索 |
+| 🟢 Qdrant | qdrant:latest | 純粋コサイン類似度検索 |
 | 🌐 WebFetch | OpenAI web_search | リアルタイム Web 検索 |
 
 各パイプラインは **QueryAnalyzer → Retriever → Evaluator（max 3 回再検索）→ Ranker → Generator** の 5 ステップを独立実行します。

@@ -18,9 +18,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 _API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 _SOURCE_CONFIG = {
-    "postgres": {"label": "📦 PostgreSQL", "color": "#1e40af"},
-    "mysql":    {"label": "🗂️ MySQL",      "color": "#166534"},
-    "qdrant":   {"label": "🔷 Qdrant",     "color": "#6b21a8"},
+    "postgres": {"label": "🟠 PostgreSQL", "color": "#1e40af"},
+    "mysql":    {"label": "🟡 MySQL",      "color": "#166534"},
+    "qdrant":   {"label": "🟢 Qdrant",     "color": "#6b21a8"},
     "web":      {"label": "🌐 WebFetch",   "color": "#92400e"},
 }
 
