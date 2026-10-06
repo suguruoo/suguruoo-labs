@@ -90,13 +90,13 @@ class QdrantRetriever:
             attempt=attempt,
         )
 
-        results = self._client.search(
+        results = self._client.query_points(
             collection_name=self._collection_name,
-            query_vector=embedding,
+            query=embedding,
             query_filter=qdrant_filter,
             limit=params.top_k,
             with_payload=True,
-        )
+        ).points
 
         docs: list[RetrievedDoc] = []
         for rank, result in enumerate(results):

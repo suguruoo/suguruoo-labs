@@ -52,3 +52,44 @@ streamlit run ui/app.py
 - [DynamoDB Developer Guide (EN)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/)
 - [AWS Database Blog](https://aws.amazon.com/blogs/database/)
 
+
+
+📦 PostgreSQL -> 🟠 PostgreSQL
+🔷 Qdrant -> 🟢 Qdrant
+🌐 WebFetch ->　🌐 WebFetch
+🗂️ MySQL —> 🟡 MySQL
+
+/results のサマリー比較における、メインカードで、
+
+⏱ TotalTime 📄 Hit Docs. 🔄 Retry
+21.06s  🥉.  5 件  🥇.    2 回
+
+の下に
+TotalInputtoken TotalOutputToken
+hoge 🥉            hoge 🥇
+
+で少ない順でランクづけして表示するようにして。
+
+あと、
+🏆 ランキング
+⏱ TotalTime（速い順）
+
+🥇 🗂️ MySQL — 13.76s
+
+🥈 🌐 WebFetch — 15.29s
+
+🥉 📦 PostgreSQL — 21.06s
+
+😢 🔷 Qdrant — 23.41s
+
+📄 Hit Docs（多い順）
+
+🥇 📦 PostgreSQL — 5 件
+
+🥇 🔷 Qdrant — 5 件
+
+🥈 🌐 WebFetch — 1 件
+
+🥉 🗂️ MySQL — 0 件
+
+のセクションは廃止して
