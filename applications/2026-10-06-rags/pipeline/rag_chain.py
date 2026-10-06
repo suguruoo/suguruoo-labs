@@ -75,19 +75,9 @@ async def _run_single_pipeline(
     settings: dict[str, Any],
     log_queue: asyncio.Queue[StepLog],
 ) -> PipelineResult:
-    """1本のパイプラインを実行する。
+    """1本のパイプラインを実行する（タイミング計測付き）。"""
+    import time
 
-    フロー: QueryAnalyze → Retrieve → Evaluate → (再検索 max retry) → Rank → Generate
-
-    Args:
-        source: ソース種別。
-        params: パイプラインパラメータ。
-        settings: DB接続設定。
-        log_queue: ログ投入先キュー。
-
-    Returns:
-        PipelineResult。
-    """
     openai_key = settings["openai_api_key"]
     step_logger = StepLogger(source=source, queue=log_queue)
 
@@ -115,28 +105,35 @@ async def _run_single_pipeline(
     missing_info = ""
     final_attempt = 1
 
+    # タイミング集計
+    t_pipeline_start = time.perf_counter()
+    t_query_analyze = 0.0
+    t_retrieve = 0.0
+    t_evaluate = 0.0
+
     for attempt in range(1, params.max_retry + 1):
         final_attempt = attempt
 
+        t0 = time.perf_counter()
         query_dict = await analyzer.analyze(
-            params=params,
-            step_logger=step_logger,
-            attempt=attempt,
-            previous_keywords=previous_keywords,
-            missing_info=missing_info,
+            params=params, step_logger=step_logger,
+            attempt=attempt, previous_keywords=previous_keywords, missing_info=missing_info,
         )
+        t_query_analyze += time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         docs = await retriever.retrieve(
-            query_dict=query_dict,
-            params=params,
-            step_logger=step_logger,
-            attempt=attempt,
+            query_dict=query_dict, params=params,
+            step_logger=step_logger, attempt=attempt,
         )
+        t_retrieve += time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         is_sufficient, missing_info, _reason = await evaluator.evaluate(
-            docs=docs,
-            params=params,
-            step_logger=step_logger,
-            attempt=attempt,
+            docs=docs, params=params,
+            step_logger=step_logger, attempt=attempt,
         )
+        t_evaluate += time.perf_counter() - t0
 
         if is_sufficient:
             break
@@ -152,18 +149,26 @@ async def _run_single_pipeline(
         previous_keywords = str(query_dict)
 
     top_docs = ranker.rank(docs=docs, params=params, step_logger=step_logger, attempt=final_attempt)
+
+    t0 = time.perf_counter()
     final_answer = await generator.generate(
-        top_docs=top_docs,
-        params=params,
-        step_logger=step_logger,
-        attempt=final_attempt,
+        top_docs=top_docs, params=params,
+        step_logger=step_logger, attempt=final_attempt,
     )
+    t_generate = time.perf_counter() - t0
+    t_total = time.perf_counter() - t_pipeline_start
 
     return PipelineResult(
         source=source,
         final_answer=final_answer,
         top_docs=top_docs,
         retry_count=final_attempt - 1,
+        total_sec=round(t_total, 2),
+        query_analyze_sec=round(t_query_analyze, 2),
+        retrieve_sec=round(t_retrieve, 2),
+        evaluate_sec=round(t_evaluate, 2),
+        generate_sec=round(t_generate, 2),
+        hit_count=len(top_docs),
     )
 
 

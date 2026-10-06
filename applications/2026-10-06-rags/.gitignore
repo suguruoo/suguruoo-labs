@@ -47,6 +47,7 @@ qdrant_data/
 *.log
 logs/
 
-# Crawl cache
+# Crawl cache / results (local only)
 data/cache/
 data/raw/
+data/results/

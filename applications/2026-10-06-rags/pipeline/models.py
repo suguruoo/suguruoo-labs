@@ -47,9 +47,9 @@ class StepLog(BaseModel):
 
     source: SourceType
     step: StepType
-    attempt: int = 1  # 再検索ループの何回目か
+    attempt: int = 1
+    elapsed_sec: float = 0.0   # このステップの所要時間（秒）
     data: dict[str, Any] = Field(default_factory=dict)
-    # data の中身はステップごとに異なる
 
 
 class PipelineParams(BaseModel):
@@ -74,3 +74,10 @@ class PipelineResult(BaseModel):
     top_docs: list[RetrievedDoc] = Field(default_factory=list)
     retry_count: int = 0
     steps: list[StepLog] = Field(default_factory=list)
+    # タイミング情報
+    total_sec: float = 0.0          # パイプライン全体の所要時間
+    query_analyze_sec: float = 0.0  # QueryAnalyze ステップの所要時間
+    retrieve_sec: float = 0.0       # Retrieve ステップの所要時間（合計）
+    evaluate_sec: float = 0.0       # Evaluate ステップの所要時間（合計）
+    generate_sec: float = 0.0       # Generate ステップの所要時間
+    hit_count: int = 0              # 取得できた文書数
