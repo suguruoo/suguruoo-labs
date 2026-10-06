@@ -20,8 +20,8 @@ _BATCH_SIZE = 200
 
 
 def _get_connection(settings: dict[str, Any]) -> pymysql.connections.Connection:
-    """MySQL 接続を返す。"""
-    return pymysql.connect(
+    """MySQL 接続を返す。接続後に文字コードを utf8mb4 に明示設定する。"""
+    conn = pymysql.connect(
         host=settings["host"],
         port=settings["port"],
         user=settings["user"],
@@ -30,6 +30,11 @@ def _get_connection(settings: dict[str, Any]) -> pymysql.connections.Connection:
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
     )
+    # character_set_client がサーバーデフォルト(latin1)のままになるケースを防ぐ
+    with conn.cursor() as cur:
+        cur.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+    conn.commit()
+    return conn
 
 
 def init_schema(settings: dict[str, Any]) -> None:
