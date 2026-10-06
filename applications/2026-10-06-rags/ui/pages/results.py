@@ -95,7 +95,7 @@ def _render_timing_breakdown(result: dict) -> None:
 """)
 
 
-def _render_detail_page(data: dict) -> None:
+def _render_detail_page(data: dict, result_id: str) -> None:
     """1件の実行結果の詳細ページを描画する。"""
     params  = data.get("params", {})
     results = data.get("results", {})
@@ -133,8 +133,9 @@ def _render_detail_page(data: dict) -> None:
     in_token_ranks  = {s: in_token_ranks_l[i]  for i, s in enumerate(sources)}
     out_token_ranks = {s: out_token_ranks_l[i] for i, s in enumerate(sources)}
 
-    # ── サマリーカード ──
+    # ── サマリーカード（コメント付き）──
     st.markdown("### 📊 サマリー比較")
+    comments = data.get("comments", {})
     card_cols = st.columns(len(sources))
     for col, src in zip(card_cols, sources):
         with col:
@@ -143,6 +144,29 @@ def _render_detail_page(data: dict) -> None:
                 timing_ranks, hit_ranks,
                 in_token_ranks, out_token_ranks,
             )
+            # ── コメント入力エリア ──
+            existing = comments.get(src, "")
+            new_comment = st.text_area(
+                label="💬 Comment",
+                value=existing,
+                height=80,
+                key=f"comment_{result_id}_{src}",
+                placeholder="メモを入力...",
+                label_visibility="collapsed",
+            )
+            if st.button("更新", key=f"save_{result_id}_{src}", use_container_width=True):
+                try:
+                    r = requests.patch(
+                        f"{_API_URL}/results/{result_id}/comment",
+                        json={"source": src, "comment": new_comment},
+                        timeout=5,
+                    )
+                    if r.ok:
+                        st.success("保存しました", icon="✅")
+                    else:
+                        st.error(f"保存失敗: {r.status_code}")
+                except Exception as exc:
+                    st.error(f"API エラー: {exc}")
 
     st.divider()
 
@@ -212,7 +236,7 @@ selected_id = options[selected_label]
 try:
     detail_resp = requests.get(f"{_API_URL}/results/{selected_id}", timeout=5)
     if detail_resp.ok:
-        _render_detail_page(detail_resp.json())
+        _render_detail_page(detail_resp.json(), selected_id)
     else:
         st.error("結果の取得に失敗しました")
 except Exception as exc:

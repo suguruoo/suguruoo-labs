@@ -155,9 +155,26 @@ async def get_result(result_id: str) -> dict:
         return json.load(f)
 
 
+@app.patch("/results/{result_id}/comment")
+async def update_comment(result_id: str, body: dict) -> dict:
+    """指定ソースへのコメントを JSON に保存する。
+
+    body: {"source": "postgres", "comment": "..."}
+    """
+    path = os.path.join(_RESULTS_DIR, f"{result_id}.json")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Result not found")
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if "comments" not in data:
+        data["comments"] = {}
+    data["comments"][body["source"]] = body.get("comment", "")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return {"ok": True, "source": body["source"], "comment": body.get("comment", "")}
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 
-    """ヘルスチェックエンドポイント。"""
-    return {"status": "ok"}
