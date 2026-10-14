@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         get-aws-document-linkTitlePosition
 // @namespace    https://github.com/suguruoo/suguruoo-labs
-// @version      2.2.0-diag
+// @version      2.3.0
 // @description  AWS ドキュメントの H1/H2/H3 見出し下にコピーボタンを追加
 // @author       suguruoo
 // @match        https://docs.aws.amazon.com/*
@@ -12,7 +12,28 @@
 (function () {
   'use strict';
 
-  const WRAPPER_FOR_ATTR = 'data-awscopy-for';
+  var WRAPPER_FOR_ATTR = 'data-awscopy-for';
+
+  // -------------------------------------------------------------------
+  // パンくずリスト取得
+  // -------------------------------------------------------------------
+  function getBreadcrumb() {
+    var selectors = [
+      '#breadcrumbs a', '.breadcrumb a',
+      '[class*="breadcrumb"] a', 'nav[aria-label="breadcrumbs"] a',
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var items = document.querySelectorAll(selectors[i]);
+      if (items.length > 0) {
+        return Array.from(items)
+          .map(function (el) { return el.textContent.trim(); })
+          .filter(Boolean).join(' > ');
+      }
+    }
+    var el = document.querySelector('#breadcrumbs,[class*="breadcrumb"]');
+    return el ? el.textContent.replace(/\s*>\s*/g, ' > ').replace(/\s+/g, ' ').trim()
+              : (document.title || '');
+  }
 
   // -------------------------------------------------------------------
   // イベント委任: document レベルでクリックを捕捉する
@@ -20,24 +41,29 @@
   // -------------------------------------------------------------------
   document.addEventListener('click', function (e) {
     var btn = e.target;
-    // クリックされた要素またはその親がボタンかどうか確認
     while (btn && btn.tagName !== 'BUTTON') { btn = btn.parentElement; }
     if (!btn || !btn.hasAttribute('data-awscopy-btn')) return;
 
-    // クリックが届いた確認 → すぐに表示変化
-    btn.textContent = '⏳ CLICKED (document delegation)';
-    btn.style.color = 'red';
-    btn.style.borderColor = 'red';
-
-    var headingId = btn.getAttribute('data-awscopy-btn');
+    var headingId  = btn.getAttribute('data-awscopy-btn');
     var headingTag = btn.getAttribute('data-awscopy-tag');
-    var heading = headingId ? document.getElementById(headingId) : null;
-    if (!heading) return;
+    var crumb = getBreadcrumb();
+    var base  = window.location.href.split('#')[0];
+    var text;
 
-    var title = heading.textContent.trim();
-    var base = window.location.href.split('#')[0];
-    var anchor = headingTag !== 'H1' ? '#' + headingId : '';
-    var text = '[] ' + title + '\n' + base + anchor;
+    if (headingTag === 'H1') {
+      // H1（ページ最上部）: document.title から取得。
+      // H1 の id が空や不安定なケースがあるため heading DOM に依存しない。
+      var h1el = document.querySelector('h1');
+      var pageTitle = (h1el ? h1el.textContent.trim() : '') || document.title || '';
+      text = '[] ' + pageTitle + (crumb ? ' - ' + crumb : '') + '\n' + base;
+    } else {
+      // H2/H3: heading.id で DOM から取得する通常フロー
+      var heading = headingId ? document.getElementById(headingId) : null;
+      if (!heading) return;
+      var title  = heading.textContent.trim();
+      var anchor = '#' + headingId;
+      text = '[] ' + title + (crumb ? ' - ' + crumb : '') + '\n' + base + anchor;
+    }
 
     // クリップボードにコピー
     if (navigator.clipboard && navigator.clipboard.writeText) {
